@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumenpoly · Kinetic Elite Full Scale</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!--  LOBBY SCREEN                                                       -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div id="lobby-screen">
+
+    <!-- ══ HEADER ══════════════════════════════════════════════════════ -->
+    <div id="lobby-header">
+        <div>
+            <div class="lh-logo">LUMENPOLY</div>
+            <div class="lh-tagline">Kinetic Elite &middot; War Council</div>
+        </div>
+        <div class="lh-meta">
+            2 – 4 Players<br>
+            30 Minute Campaign
+        </div>
+    </div>
+
+    <!-- ══ SCROLLABLE BODY ══════════════════════════════════════════════ -->
+    <div id="lobby-body">
+
+    <!-- ── STEP 0 : Cover / Profile Setup ──────────────────────────── -->
+    <div id="lobby-step0">
+
+        <!-- Hero title -->
+        <div class="lobby-hero">
+            <div class="lobby-hero-title">LUMENPOLY</div>
+            <div class="lobby-hero-sub">Kinetic Elite &middot; War Council</div>
+        </div>
+
+        <!-- Profile card -->
+        <div class="lobby-card" style="text-align:center;">
+
+            <!-- Large circular avatar upload -->
+            <div class="lobby-cover-avatar" onclick="document.getElementById('lobby-avatar-file').click()" title="Click to upload photo">
+                <img id="lobby-avatar-img" alt="" style="width:120px;height:120px;border-radius:50%;object-fit:cover;display:none;pointer-events:none;">
+                <div id="lobby-avatar-placeholder" class="lobby-avatar-ph">
+                    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="rgba(212,175,55,0.3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    <div class="lobby-avatar-ph-label">ADD PHOTO</div>
+                </div>
+                <div class="lobby-avatar-overlay">CHANGE</div>
+            </div>
+            <input type="file" id="lobby-avatar-file" accept="image/*" style="display:none;" onchange="lobbyHandleAvatarUpload(this)">
+            <canvas id="lobby-avatar-canvas" style="display:none;"></canvas>
+            <button id="lobby-avatar-clear" onclick="lobbyClearAvatar()" class="lobby-avatar-clear-btn" style="display:none;">&#x2715; Remove Photo</button>
+
+            <hr class="lobby-divider" style="margin-top:24px;">
+
+            <label class="lobby-label" for="lobby-name" style="text-align:left;">Marshal Designation</label>
+            <input type="text" id="lobby-name" class="lobby-input" maxlength="20" placeholder="Enter your name..." style="text-align:left;">
+
+            <div id="lobby-error0" style="color:#e05555;font-size:13px;letter-spacing:1px;min-height:18px;margin:-10px 0 14px;text-align:center;font-family:'Inter',sans-serif;"></div>
+
+            <button class="lobby-btn" onclick="enterLobby()">Enter Lobby</button>
+            <button class="lobby-btn-ghost" onclick="startSinglePlayer()">Single Device Battle</button>
+
+        </div><!-- /lobby-card -->
+
+        <!-- Rules accordion -->
+        <div class="lobby-rules-section">
+            <div class="lobby-rules-heading">Field Manual</div>
+
+            <details class="rules-item">
+                <summary>Objective</summary>
+                <div class="rules-item-body">Conquer territories, build fortifications, and drain rival Marshals of their gold. The last Marshal standing — or the wealthiest when the 30-minute timer expires — wins the campaign.</div>
+            </details>
+            <details class="rules-item">
+                <summary>Turn Flow</summary>
+                <div class="rules-item-body">Each turn begins with a 10-second countdown. If you do not roll in time, <b>Invoke Lumen</b> fires automatically. Rolling doubles lets you roll again — three consecutive doubles send you to the Ban List.</div>
+            </details>
+            <details class="rules-item">
+                <summary>Spaces</summary>
+                <div class="rules-item-body">
+                    <b style="color:var(--gold)">Ascension Achieve (GO)</b> — Receive $200 gold when you pass.<br>
+                    <b style="color:var(--c-chance)">Gaeto's Decree</b> — Draw a random decree card.<br>
+                    <b style="color:var(--c-chest)">Bilins' Decree</b> — Draw a vault card.<br>
+                    <b>Territory Tithe / Guild Levy</b> — Pay a tax to the War Council.<br>
+                    <b>Meditation Spot</b> — Safe passage; no effect.<br>
+                    <b>Exploits Detected</b> — Instant warp to the Ban List.<br>
+                    <b>Ban List</b> — Imprisoned up to 3 turns; escape via doubles or a $50 bribe.
+                </div>
+            </details>
+            <details class="rules-item">
+                <summary>Territories &amp; Tribute</summary>
+                <div class="rules-item-body">Land on an unowned territory to conquer it. If a rival owns it, pay <b>War Reparations</b>. Control every territory in a color domain to <b>double base tribute</b> and unlock fortifications. Transport waypoints scale: 1 hub = $25 → 4 hubs = $200.</div>
+            </details>
+            <details class="rules-item">
+                <summary>Guild Towers &amp; Fortress</summary>
+                <div class="rules-item-body">
+                    Requires full domain control. Cost = 50% of conquest price per upgrade.<br>
+                    <b>4 Guild Towers</b> (N / E / S / W) — tribute &times; (1 + towers).<br>
+                    <b>Fortress</b> (after all 4 towers) — tribute &times; 8. Maximum defense.<br>
+                    <b>Even-build rule:</b> all territories in a domain must stay within 1 tower of each other.
+                </div>
+            </details>
+            <details class="rules-item">
+                <summary>Diplomacy</summary>
+                <div class="rules-item-body">In single-device mode you may <b>Raise the White Banner</b> instead of paying tribute. The defending Marshal decides to honor or demand reparations (auto-demand in 5 s). Unavailable in online multiplayer or Insane Mode+.</div>
+            </details>
+            <details class="rules-item">
+                <summary>Ban List Rule</summary>
+                <div class="rules-item-body" style="color:#b55;">If a territory's owner is on the Ban List, they <b style="color:#f88;">cannot collect tribute</b>. Invaders pass through at zero cost for every turn the owner remains imprisoned.</div>
+            </details>
+            <details class="rules-item">
+                <summary>Trade</summary>
+                <div class="rules-item-body">Before rolling, propose a territory trade with any active Marshal — offer gold, territories, or both. The rival has 10 seconds to accept (auto-reject on timeout). Disabled in online multiplayer and Insane Mode+.</div>
+            </details>
+            <details class="rules-item">
+                <summary>Debt &amp; Bankruptcy</summary>
+                <div class="rules-item-body">Falling into debt opens the Asset Liquidation panel. Sell towers (25% of build cost) or cede territories (50% of conquest cost). If debt can't be cleared, surrender — all territories revert to neutral.</div>
+            </details>
+            <details class="rules-item">
+                <summary>Escalating Modes</summary>
+                <div class="rules-item-body">
+                    <b style="color:#f88;">HARD 5 min</b> — taxes &amp; bribe doubled.<br>
+                    <b style="color:#f55;">ELITE 10 min</b> — only punishing decrees drawn.<br>
+                    <b style="color:#f00;">INSANE 15 min</b> — no GO bonus, no trade, no mercy.<br>
+                    <b style="color:#c00;">NIGHTMARE 20 min</b> — decree penalties doubled.<br>
+                    <b style="color:#900;">HELL 25 min</b> — war reparations doubled.<br>
+                    At 30 minutes: highest net worth wins.
+                </div>
+            </details>
+        </div><!-- /rules-section -->
+
+    </div><!-- /lobby-step0 -->
+
+    <!-- ── STEP 1 : Lobby Browser ──────────────────────────────────── -->
+    <div id="lobby-step1" style="display:none;width:100%;max-width:860px;">
+
+        <!-- Profile bar -->
+        <div class="lobby-profile-bar">
+            <button class="lobby-back-btn" onclick="lobbyGoBack()">&#8592; Back</button>
+            <div class="lobby-profile-info">
+                <img id="lobby-browser-avatar" class="lobby-browser-avatar-img" alt="">
+                <span id="lobby-browser-name" class="lobby-browser-name"></span>
+            </div>
+        </div>
+
+        <!-- Two-column: Host · Join -->
+        <div class="lobby-browser-grid">
+
+            <!-- HOST -->
+            <div class="lobby-browser-card lobby-browser-card-host">
+                <div class="lobby-bc-eyebrow">COMMAND</div>
+                <div class="lobby-bc-title">Host a Campaign</div>
+                <div class="lobby-bc-desc">Open a private war council and invite allies with a unique campaign code. You decide when the battle begins.</div>
+                <button class="lobby-btn lobby-bc-btn" onclick="lobbyClickHost()">Create Room</button>
+            </div>
+
+            <!-- JOIN -->
+            <div class="lobby-browser-card lobby-browser-card-join">
+                <div class="lobby-bc-eyebrow">ENLIST</div>
+                <div class="lobby-bc-title">Join a Campaign</div>
+                <div class="lobby-bc-desc">Enter the campaign code shared by your host to take your seat at the war council.</div>
+                <label class="lobby-label" for="lobby-code-input" style="margin-top:auto;text-align:left;">Campaign Code</label>
+                <input type="text" id="lobby-code-input" class="lobby-input" maxlength="12"
+                    placeholder="LP-XXXXXXXX"
+                    style="text-transform:uppercase;letter-spacing:6px;text-align:center;"
+                    oninput="this.value=this.value.toUpperCase()">
+                <button class="lobby-btn lobby-bc-btn" onclick="lobbyClickJoin()">Join Room</button>
+            </div>
+
+        </div><!-- /lobby-browser-grid -->
+
+        <div id="lobby-error" style="color:#e05555;font-size:13px;letter-spacing:1px;margin-top:20px;min-height:20px;text-align:center;font-family:'Inter',sans-serif;"></div>
+
+    </div><!-- /lobby-step1 -->
+
+    <!-- ── STEP 2 : Waiting room ───────────────────────────────────── -->
+    <div id="lobby-step2" style="display:none;">
+
+        <!-- Top bar: code + action buttons -->
+        <div class="lobby-step2-topbar">
+            <div id="lobby-code-section">
+                <div class="lobby-label" style="text-align:left;">Campaign Code</div>
+                <div id="lobby-code-display" style="color:var(--gold);font-size:26px;font-weight:900;letter-spacing:8px;"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                <button class="lobby-btn" style="font-size:9px;padding:10px 18px;" onclick="lobbyCopyLink()">COPY INVITE</button>
+                <button class="lobby-btn" id="lobby-start-btn" onclick="lobbyStartGame()"
+                    style="display:none;padding:14px 28px;font-size:11px;letter-spacing:5px;">BEGIN CAMPAIGN</button>
+                <div id="lobby-waiting-msg" style="color:#555;font-size:10px;letter-spacing:4px;display:none;font-family:'Montserrat',sans-serif;">AWAITING HOST COMMAND...</div>
+            </div>
+        </div>
+
+        <!-- Two columns: visitor list + chat -->
+        <div class="lobby-step2-grid">
+
+            <!-- LEFT: visitor list -->
+            <div class="lobby-panel">
+                <div class="lobby-panel-label">Marshals Assembled</div>
+                <div style="color:#444;font-size:10px;letter-spacing:3px;margin-bottom:16px;font-family:'Montserrat',sans-serif;">MIN. 2 REQUIRED TO BEGIN</div>
+                <div id="lobby-player-list"></div>
+                <div id="lobby-error2" style="color:#e04040;font-size:11px;margin-top:auto;padding-top:12px;min-height:16px;"></div>
+            </div>
+
+            <!-- RIGHT: chat -->
+            <div class="lobby-panel" style="min-height:420px;">
+                <div class="lobby-panel-label">War Council Comms</div>
+                <div id="lobby-chat-msgs">
+                    <div class="lobby-chat-empty">Messages will appear here once allies connect...</div>
+                </div>
+                <div class="lobby-chat-input-row">
+                    <input type="text" id="lobby-chat-input" class="lobby-input"
+                        style="margin-bottom:0;flex:1;font-size:13px;text-align:left;letter-spacing:1px;"
+                        placeholder="Message the council..."
+                        maxlength="120"
+                        onkeydown="if(event.key==='Enter') lobbyChatSend()">
+                    <button class="lobby-btn" onclick="lobbyChatSend()"
+                        style="padding:12px 18px;white-space:nowrap;margin:0;">SEND</button>
+                </div>
+            </div>
+
+        </div><!-- /lobby-step2-grid -->
+    </div>
+    <!-- /lobby-step2 -->
+
+    </div><!-- /lobby-body -->
+
+    <!-- ══ FOOTER ══════════════════════════════════════════════════════ -->
+    <div id="lobby-footer">
+        <span class="lf-text">Lumenpoly</span>
+        <span class="lf-dot">&middot;</span>
+        <span class="lf-text">Kinetic Elite Full Scale</span>
+        <span class="lf-dot">&middot;</span>
+        <span class="lf-text">2 – 4 Players &nbsp;&middot;&nbsp; 30 Min</span>
+    </div>
+
+</div>
+<!-- /lobby-screen -->
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!--  TURN LOCK OVERLAY (multiplayer)                                    -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div id="turn-lock-overlay">
+    <div>
+        <div style="font-size:9px;letter-spacing:6px;color:#222;margin-bottom:16px;">WAR COUNCIL</div>
+        <div style="font-size:15px;letter-spacing:5px;color:#383838;" id="turn-lock-name">...</div>
+        <div style="font-size:8px;letter-spacing:3px;color:#161616;margin-top:14px;">COMMANDS THEIR FORCES</div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!--  IN-GAME CHAT PANEL                                                 -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<button id="chat-toggle" onclick="toggleChat()">
+    CHAT<span id="chat-badge" style="display:none;"> ●</span>
+</button>
+<div id="chat-panel">
+    <div style="padding:18px 18px 12px;border-bottom:1px solid rgba(212,175,55,0.12);display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:10px;letter-spacing:4px;color:#555;">WAR COUNCIL COMMS</span>
+        <button onclick="toggleChat()" style="background:none;border:none;color:#333;font-size:18px;cursor:pointer;">✕</button>
+    </div>
+    <div id="chat-msgs"></div>
+    <div style="display:flex;gap:8px;padding:12px;">
+        <input type="text" id="chat-input"
+            style="flex:1;background:#080808;border:1px solid #1a1a1a;color:#ccc;font-size:12px;font-family:'Inter',sans-serif;padding:9px 12px;outline:none;"
+            placeholder="Message..."
+            maxlength="120"
+            onkeydown="if(event.key==='Enter') chatSend()">
+        <button onclick="chatSend()"
+            style="background:var(--gold);color:#000;border:none;padding:9px 14px;font-size:10px;font-weight:900;cursor:pointer;letter-spacing:2px;">▶</button>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!--  PLAYER INFO BOXES                                                  -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="p-info-box" id="box-1">
+    <div class="p-header">
+        <div class="p-player-identity">
+            <img class="p-avatar" id="p1-avatar" alt="" style="border-color:var(--c-red)">
+            <div class="p-name" style="color:var(--c-red)" id="p1-name">MARSHAL I</div>
+        </div>
+        <div class="p-cash" id="p1-cash">$1500</div>
+    </div>
+    <div class="p-assets-container" id="p1-assets">NO TERRITORIES</div>
+    <div class="p-logs" id="p1-logs">&gt; GUILD ALLIANCE FORGED</div>
+</div>
+<div class="p-info-box" id="box-2">
+    <div class="p-header">
+        <div class="p-player-identity">
+            <img class="p-avatar" id="p2-avatar" alt="" style="border-color:var(--c-green)">
+            <div class="p-name" style="color:var(--c-green)" id="p2-name">MARSHAL II</div>
+        </div>
+        <div class="p-cash" id="p2-cash">$1500</div>
+    </div>
+    <div class="p-assets-container" id="p2-assets">NO TERRITORIES</div>
+    <div class="p-logs" id="p2-logs">&gt; GUILD ALLIANCE FORGED</div>
+</div>
+<div class="p-info-box" id="box-3">
+    <div class="p-header">
+        <div class="p-player-identity">
+            <img class="p-avatar" id="p3-avatar" alt="" style="border-color:var(--c-chest)">
+            <div class="p-name" style="color:var(--c-chest)" id="p3-name">MARSHAL III</div>
+        </div>
+        <div class="p-cash" id="p3-cash">$1500</div>
+    </div>
+    <div class="p-assets-container" id="p3-assets">NO TERRITORIES</div>
+    <div class="p-logs" id="p3-logs">&gt; GUILD ALLIANCE FORGED</div>
+</div>
+<div class="p-info-box" id="box-4">
+    <div class="p-header">
+        <div class="p-player-identity">
+            <img class="p-avatar" id="p4-avatar" alt="" style="border-color:var(--c-yellow)">
+            <div class="p-name" style="color:var(--c-yellow)" id="p4-name">MARSHAL IV</div>
+        </div>
+        <div class="p-cash" id="p4-cash">$1500</div>
+    </div>
+    <div class="p-assets-container" id="p4-assets">NO TERRITORIES</div>
+    <div class="p-logs" id="p4-logs">&gt; GUILD ALLIANCE FORGED</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!--  DECISION MODAL                                                     -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div id="decision-modal">
+    <h2 id="modal-title" style="color:var(--gold); margin-bottom:15px;">LUMEN ALERT</h2>
+    <div id="modal-text" style="margin-bottom:25px;"></div>
+    <div id="modal-actions"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!--  GAME BOARD                                                         -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="board-frame">
+<div class="board">
+
+    <!-- ── TOP ROW (row 1) ── -->
+    <div class="corner" id="s20" style="grid-column:1;grid-row:1;"><div class="name">Meditation Spot</div></div>
+    <div class="space yellow" id="s21" style="grid-column:2;grid-row:1;"><div class="owner-indicator"></div><div class="name">Wildland Sanctuary</div></div>
+    <div class="space chance" id="s22" style="grid-column:3;grid-row:1;"><div class="name">Gaeto's Decree</div></div>
+    <div class="space yellow" id="s23" style="grid-column:4;grid-row:1;"><div class="owner-indicator"></div><div class="name">Azure Pool</div></div>
+    <div class="space yellow" id="s24" style="grid-column:5;grid-row:1;"><div class="owner-indicator"></div><div class="name">Blackcloud Desert</div></div>
+    <div class="space transport" id="s25" style="grid-column:6;grid-row:1;"><div class="owner-indicator"></div><div class="name">Wildlands Express</div></div>
+    <div class="space green" id="s26" style="grid-column:7;grid-row:1;"><div class="owner-indicator"></div><div class="name">Hall of Survey</div></div>
+    <div class="space green" id="s27" style="grid-column:8;grid-row:1;"><div class="owner-indicator"></div><div class="name">Fishman Shore</div></div>
+    <div class="space dblue" id="s28" style="grid-column:9;grid-row:1;"><div class="owner-indicator"></div><div class="name">Seven Mile Cave</div></div>
+    <div class="space dblue" id="s29" style="grid-column:10;grid-row:1;"><div class="owner-indicator"></div><div class="name">The One Mountain</div></div>
+    <div class="corner" id="s30" style="grid-column:11;grid-row:1;"><div class="name">Exploits Detected</div></div>
+
+    <!-- ── LEFT COLUMN ── -->
+    <div class="space red"    id="s19" style="grid-column:1;grid-row:2;"><div class="owner-indicator"></div><div class="name">Heaven's Repository</div></div>
+    <div class="space red"    id="s18" style="grid-column:1;grid-row:3;"><div class="owner-indicator"></div><div class="name">Vile Hill</div></div>
+    <div class="space chest"  id="s17" style="grid-column:1;grid-row:4;"><div class="name">Bilins' Decree</div></div>
+    <div class="space red"    id="s16" style="grid-column:1;grid-row:5;"><div class="owner-indicator"></div><div class="name">Brigand Keep</div></div>
+    <div class="space transport" id="s15" style="grid-column:1;grid-row:6;"><div class="owner-indicator"></div><div class="name">Laguna Ferry</div></div>
+    <div class="space orange" id="s14" style="grid-column:1;grid-row:7;"><div class="owner-indicator"></div><div class="name">Conversation Hall</div></div>
+    <div class="space orange" id="s13" style="grid-column:1;grid-row:8;"><div class="owner-indicator"></div><div class="name">Laguna Collective</div></div>
+    <div class="space pink"   id="s12" style="grid-column:1;grid-row:9;"><div class="owner-indicator"></div><div class="name">Pristine Wall</div></div>
+    <div class="space pink"   id="s11" style="grid-column:1;grid-row:10;"><div class="owner-indicator"></div><div class="name">Skysong Temple</div></div>
+
+    <!-- ── BOTTOM ROW ── -->
+    <div class="corner" id="s10" style="grid-column:1;grid-row:11;"><div class="name">Ban List</div></div>
+    <div class="space lblue"  id="s9" style="grid-column:2;grid-row:11;"><div class="owner-indicator"></div><div class="name">Bamboo Peak</div></div>
+    <div class="space lblue"  id="s8" style="grid-column:3;grid-row:11;"><div class="owner-indicator"></div><div class="name">Bamboo Height</div></div>
+    <div class="space chance" id="s7" style="grid-column:4;grid-row:11;"><div class="name">Gaeto's Decree</div></div>
+    <div class="space lblue"  id="s6" style="grid-column:5;grid-row:11;"><div class="owner-indicator"></div><div class="name">Mount Jadeon</div></div>
+    <div class="space transport" id="s5" style="grid-column:6;grid-row:11;"><div class="owner-indicator"></div><div class="name">Sunstream Express</div></div>
+    <div class="space tax"    id="s4" style="grid-column:7;grid-row:11;"><div class="name">Territory Tithe</div></div>
+    <div class="space brown"  id="s3" style="grid-column:8;grid-row:11;"><div class="owner-indicator"></div><div class="name">Grasstemple Village</div></div>
+    <div class="space chest"  id="s2" style="grid-column:9;grid-row:11;"><div class="name">Bilins' Decree</div></div>
+    <div class="space brown"  id="s1" style="grid-column:10;grid-row:11;"><div class="owner-indicator"></div><div class="name">Sunstream City</div></div>
+    <div class="corner" id="s0" style="grid-column:11;grid-row:11;"><div class="name">Ascension Achieve</div></div>
+
+    <!-- ── RIGHT COLUMN ── -->
+    <div class="space purple" id="s31" style="grid-column:11;grid-row:2;"><div class="owner-indicator"></div><div class="name">Fantasy Peak</div></div>
+    <div class="space purple" id="s32" style="grid-column:11;grid-row:3;"><div class="owner-indicator"></div><div class="name">Mount Clearwind</div></div>
+    <div class="space chest"  id="s33" style="grid-column:11;grid-row:4;"><div class="name">Bilins' Decree</div></div>
+    <div class="space purple" id="s34" style="grid-column:11;grid-row:5;"><div class="owner-indicator"></div><div class="name">Mountain Lake</div></div>
+    <div class="space transport" id="s35" style="grid-column:11;grid-row:6;"><div class="owner-indicator"></div><div class="name">Kunlun Snow Sleds</div></div>
+    <div class="space chance" id="s36" style="grid-column:11;grid-row:7;"><div class="name">Gaeto's Decree</div></div>
+    <div class="space silver" id="s37" style="grid-column:11;grid-row:8;"><div class="owner-indicator"></div><div class="name">Temple of Righteous</div></div>
+    <div class="space tax"    id="s38" style="grid-column:11;grid-row:9;"><div class="name">Guild Levy</div></div>
+    <div class="space silver" id="s39" style="grid-column:11;grid-row:10;"><div class="owner-indicator"></div><div class="name">Djinn Palace</div></div>
+
+    <!-- ── CENTER ── -->
+    <div class="center">
+        <div class="status-bar" id="game-status">PLAYER 1 TURN</div>
+        <div id="turn-timer-bar" style="font-size:11px;color:#aaa;letter-spacing:1px;min-height:14px;margin-top:3px;text-align:center;"></div>
+        <div id="mode-bar" style="font-size:11px;letter-spacing:2px;min-height:14px;text-align:center;"></div>
+
+        <div class="dome-container">
+            <div class="dome-glass" id="dome"></div>
+            <div class="dice-tray">
+                <!-- Dice 1 -->
+                <div id="dice1" class="die">
+                    <div class="die-face front f1"><div class="pip red" style="grid-area:2/2"></div></div>
+                    <div class="die-face back f6">
+                        <div class="pip" style="grid-area:1/1"></div><div class="pip" style="grid-area:2/1"></div>
+                        <div class="pip" style="grid-area:3/1"></div><div class="pip" style="grid-area:1/3"></div>
+                        <div class="pip" style="grid-area:2/3"></div><div class="pip" style="grid-area:3/3"></div>
+                    </div>
+                    <div class="die-face right f2">
+                        <div class="pip" style="grid-area:1/1"></div><div class="pip" style="grid-area:3/3"></div>
+                    </div>
+                    <div class="die-face left f5">
+                        <div class="pip" style="grid-area:1/1"></div><div class="pip" style="grid-area:1/3"></div>
+                        <div class="pip" style="grid-area:2/2"></div><div class="pip" style="grid-area:3/1"></div>
+                        <div class="pip" style="grid-area:3/3"></div>
+                    </div>
+                    <div class="die-face top f3">
+                        <div class="pip" style="grid-area:1/1"></div><div class="pip" style="grid-area:2/2"></div>
+                        <div class="pip" style="grid-area:3/3"></div>
+                    </div>
+                    <div class="die-face bottom f4">
+                        <div class="pip red" style="grid-area:1/1"></div><div class="pip red" style="grid-area:1/3"></div>
+                        <div class="pip red" style="grid-area:3/1"></div><div class="pip red" style="grid-area:3/3"></div>
+                    </div>
+                </div>
+                <!-- Dice 2 -->
+                <div id="dice2" class="die">
+                    <div class="die-face front f1"><div class="pip red" style="grid-area:2/2"></div></div>
+                    <div class="die-face back f6">
+                        <div class="pip" style="grid-area:1/1"></div><div class="pip" style="grid-area:2/1"></div>
+                        <div class="pip" style="grid-area:3/1"></div><div class="pip" style="grid-area:1/3"></div>
+                        <div class="pip" style="grid-area:2/3"></div><div class="pip" style="grid-area:3/3"></div>
+                    </div>
+                    <div class="die-face right f2">
+                        <div class="pip" style="grid-area:1/1"></div><div class="pip" style="grid-area:3/3"></div>
+                    </div>
+                    <div class="die-face left f5">
+                        <div class="pip" style="grid-area:1/1"></div><div class="pip" style="grid-area:1/3"></div>
+                        <div class="pip" style="grid-area:2/2"></div><div class="pip" style="grid-area:3/1"></div>
+                        <div class="pip" style="grid-area:3/3"></div>
+                    </div>
+                    <div class="die-face top f3">
+                        <div class="pip" style="grid-area:1/1"></div><div class="pip" style="grid-area:2/2"></div>
+                        <div class="pip" style="grid-area:3/3"></div>
+                    </div>
+                    <div class="die-face bottom f4">
+                        <div class="pip red" style="grid-area:1/1"></div><div class="pip red" style="grid-area:1/3"></div>
+                        <div class="pip red" style="grid-area:3/1"></div><div class="pip red" style="grid-area:3/3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button class="roll-btn" id="roll-trigger" onclick="runPhysics()">Invoke Lumen</button>
+        <button class="roll-btn" id="trade-trigger" onclick="initiateTrade()"
+            style="font-size:10px;padding:10px 30px;letter-spacing:3px;margin-top:8px;border-color:rgba(212,175,55,0.35);color:rgba(212,175,55,0.6);">PROPOSE TRADE</button>
+    </div>
+
+</div>
+</div>
+<!-- /board-frame -->
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!--  SCRIPTS (game logic first, then lobby / chat / anti-cheat)        -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<script src="js/game.js"></script>
+<script src="js/lobby.js"></script>
+
+</body>
+</html>
