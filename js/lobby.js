@@ -266,13 +266,13 @@ function lobbyHandleAvatarUpload(input) {
         const img = new Image();
         img.onload = () => {
             const canvas = document.getElementById('lobby-avatar-canvas');
-            canvas.width = 128; canvas.height = 128;
+            canvas.width = 200; canvas.height = 200;
             const ctx = canvas.getContext('2d');
-            // Center-crop to square then scale to 128×128
+            // Center-crop to square then scale to 200×200
             const side = Math.min(img.width, img.height);
             const sx = (img.width  - side) / 2;
             const sy = (img.height - side) / 2;
-            ctx.drawImage(img, sx, sy, side, side, 0, 0, 128, 128);
+            ctx.drawImage(img, sx, sy, side, side, 0, 0, 200, 200);
             lobbyAvatarData = canvas.toDataURL('image/jpeg', 0.85);
             localStorage.setItem('lp_avatar', lobbyAvatarData);
             const preview  = document.getElementById('lobby-avatar-img');
@@ -713,10 +713,10 @@ function aiHandleAvatarUpload(slotIdx, fileInput) {
         const img = new Image();
         img.onload = () => {
             const canvas = document.getElementById('lobby-avatar-canvas');
-            canvas.width = 128; canvas.height = 128;
+            canvas.width = 200; canvas.height = 200;
             const ctx  = canvas.getContext('2d');
             const side = Math.min(img.width, img.height);
-            ctx.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, 128, 128);
+            ctx.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, 200, 200);
             aiSetup.playerAvatars[slotIdx] = canvas.toDataURL('image/jpeg', 0.85);
             // Update DOM without full re-render
             const imgEl = document.getElementById(`ai-avatar-img-${slotIdx}`);
