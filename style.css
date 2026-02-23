@@ -679,10 +679,12 @@ details.rules-item > summary:hover { color: #bbb; }
 
 /* ─── TURN LOCK OVERLAY ──────────────────────────────────────────── */
 #turn-lock-overlay {
-    position: fixed; inset: 0; z-index: 4000;
-    background: rgba(0,0,0,0.78);
+    position: fixed; top: 0; left: 0; right: 0; z-index: 4000;
+    background: rgba(4,4,6,0.92);
+    border-bottom: 1px solid rgba(212,175,55,0.18);
     display: none; align-items: center; justify-content: center;
-    text-align: center; pointer-events: all;
+    text-align: center; pointer-events: none;
+    padding: 10px 0; gap: 18px;
 }
 
 /* ═══════════════════════════════════════════════════════════════════ */

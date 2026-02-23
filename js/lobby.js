@@ -70,7 +70,7 @@ function validateTurnDone(prevState, data) {
     // 2. Cash conservation: total cash must not increase (banks create no money)
     const prevTotal = prevState.players.reduce((a, p) => a + p.cash, 0);
     const newTotal  = s.players.reduce((a, p) => a + p.cash, 0);
-    if (newTotal > prevTotal + 200) {   // +200 tolerance for GO bonus
+    if (newTotal > prevTotal + 500) {   // +500: GO pass ($200) + collect card up to ($200) + buffer
         return { ok: false, reason: 'Impossible cash increase detected' };
     }
 
