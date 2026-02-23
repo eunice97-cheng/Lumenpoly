@@ -189,6 +189,25 @@ function initLobby() {
         const codeInput = document.getElementById('lobby-code-input');
         if (codeInput) codeInput.value = hash.slice(1).toUpperCase();
     }
+
+    // ── Restore saved name and avatar from previous session ──────────
+    const savedName   = localStorage.getItem('lp_name');
+    const savedAvatar = localStorage.getItem('lp_avatar');
+
+    if (savedName) {
+        const nameInput = document.getElementById('lobby-name');
+        if (nameInput) nameInput.value = savedName;
+    }
+
+    if (savedAvatar) {
+        lobbyAvatarData = savedAvatar;
+        const preview  = document.getElementById('lobby-avatar-img');
+        const ph       = document.getElementById('lobby-avatar-placeholder');
+        const clearBtn = document.getElementById('lobby-avatar-clear');
+        if (preview)  { preview.src = savedAvatar; preview.style.display = 'block'; }
+        if (ph)       ph.style.display = 'none';
+        if (clearBtn) clearBtn.style.display = 'block';
+    }
 }
 
 // ── Cover page → Lobby browser transition ────────────────────────────
@@ -196,6 +215,7 @@ function enterLobby() {
     const name = document.getElementById('lobby-name').value.trim();
     if (!name) { lobbyErr0('Please enter your Marshal name first.'); return; }
     lobbyErr0('');
+    localStorage.setItem('lp_name', name);
 
     lobbyProfile.name   = name;
     lobbyProfile.avatar = lobbyAvatarData;
@@ -215,7 +235,24 @@ function enterLobby() {
 function lobbyGoBack() {
     lobbyErr('');
     document.getElementById('lobby-step1').style.display = 'none';
-    document.getElementById('lobby-step0').style.display = 'flex';
+    document.getElementById('lobby-step0').style.display = 'grid';
+}
+
+function lobbyCancelHosting() {
+    // Tear down peer connection
+    if (mp.peer) { try { mp.peer.destroy(); } catch(e) {} mp.peer = null; }
+    mp.enabled    = false;
+    mp.isHost     = false;
+    mp.guestConns = [];
+    mp.nameMap    = {};
+    mp.avatarMap  = {};
+    mp.roomCode   = null;
+    history.replaceState(null, '', window.location.pathname);
+
+    document.getElementById('lobby-step2').style.display = 'none';
+    document.getElementById('lobby-step1').style.display = 'flex';
+    lobbyErr('');
+    lobbyErr2('');
 }
 
 function lobbyErr0(msg) { const el = document.getElementById('lobby-error0'); if (el) el.textContent = msg; }
@@ -237,6 +274,7 @@ function lobbyHandleAvatarUpload(input) {
             const sy = (img.height - side) / 2;
             ctx.drawImage(img, sx, sy, side, side, 0, 0, 128, 128);
             lobbyAvatarData = canvas.toDataURL('image/jpeg', 0.85);
+            localStorage.setItem('lp_avatar', lobbyAvatarData);
             const preview  = document.getElementById('lobby-avatar-img');
             const ph       = document.getElementById('lobby-avatar-placeholder');
             const clearBtn = document.getElementById('lobby-avatar-clear');
@@ -251,6 +289,7 @@ function lobbyHandleAvatarUpload(input) {
 
 function lobbyClearAvatar() {
     lobbyAvatarData = null;
+    localStorage.removeItem('lp_avatar');
     const preview   = document.getElementById('lobby-avatar-img');
     const ph        = document.getElementById('lobby-avatar-placeholder');
     const clearBtn  = document.getElementById('lobby-avatar-clear');
@@ -513,9 +552,225 @@ function lobbyStartGame() {
 // =====================================================================
 //  GAME LAUNCH
 // =====================================================================
+
+// ─── AI SETUP ─────────────────────────────────────────────────────────
+const AI_COLORS    = ['#ff4444', '#44dd44', '#4488ff', '#ffee22'];
+const AI_ROMAN     = ['I', 'II', 'III', 'IV'];
+const AI_CHARACTERS = [
+    { name: 'Anan',    avatar: 'Anan.JPG'    },
+    { name: 'Velonus', avatar: 'Velonus.JPG' },
+    { name: 'Bilu',    avatar: 'Bilu.PNG'    },
+];
+
+const aiSetup = {
+    numPlayers:    2,
+    slots:         ['human', 'ai', 'ai', 'ai'],
+    playerNames:   ['', '', '', ''],
+    playerAvatars: [null, null, null, null],
+};
+
 function startSinglePlayer() {
+    // Pre-fill slot 0 from the cover page inputs directly
+    const nameEl = document.getElementById('lobby-name');
+    const name   = (nameEl ? nameEl.value.trim() : '') || lobbyProfile.name || '';
+    aiSetup.playerNames[0]   = name;
+    aiSetup.playerAvatars[0] = lobbyAvatarData || lobbyProfile.avatar || null;
+    document.getElementById('lobby-step0').style.display = 'none';
+    document.getElementById('lobby-step-ai').style.display = 'block';
+    aiSetup.numPlayers = 2;
+    renderAISetup();
+}
+
+function cancelAISetup() {
+    document.getElementById('lobby-step-ai').style.display = 'none';
+    document.getElementById('lobby-step0').style.display = 'grid';
+}
+
+function renderAISetup() {
+    const n = aiSetup.numPlayers;
+
+    // ── Player count selector ──────────────────────────────────────────
+    const countRow = document.getElementById('ai-count-row');
+    countRow.innerHTML = '';
+    [2, 3, 4].forEach(num => {
+        const btn = document.createElement('button');
+        btn.style.cssText = `padding:14px 32px;font-size:15px;font-weight:700;letter-spacing:3px;cursor:pointer;font-family:'Barlow Semi Condensed',sans-serif;border:1px solid;transition:all 0.15s;`
+            + (num === n
+                ? 'background:var(--gold);color:#000;border-color:var(--gold);'
+                : 'background:transparent;color:#555;border-color:#222;');
+        btn.textContent = num;
+        btn.onclick = () => { aiSetup.numPlayers = num; renderAISetup(); };
+        countRow.appendChild(btn);
+    });
+
+    // ── Slot rows ──────────────────────────────────────────────────────
+    const slotList = document.getElementById('ai-slot-list');
+    slotList.innerHTML = '';
+
+    let aiCharIdx = 0;
+    for (let i = 0; i < n; i++) {
+        const isHuman    = i === 0 || aiSetup.slots[i] === 'human';
+        const char       = !isHuman ? (AI_CHARACTERS[aiCharIdx++] || AI_CHARACTERS[AI_CHARACTERS.length - 1]) : null;
+        const aiName     = char ? char.name   : '';
+        const aiAvatarUrl = char ? char.avatar : '';
+
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:18px;padding:18px 22px;border:1px solid #1a1a1a;flex-wrap:wrap;';
+
+        // Color dot + slot label
+        const slotLabel = document.createElement('div');
+        slotLabel.style.cssText = 'display:flex;align-items:center;gap:10px;flex-shrink:0;min-width:140px;';
+        slotLabel.innerHTML = `<div style="width:12px;height:12px;border-radius:50%;background:${AI_COLORS[i]};flex-shrink:0;"></div>
+            <span style="font-family:'Barlow Semi Condensed',sans-serif;font-size:15px;letter-spacing:2px;color:#555;">SLOT ${AI_ROMAN[i]}</span>`;
+        row.appendChild(slotLabel);
+
+        // Profile section (avatar + name)
+        const profile = document.createElement('div');
+        profile.style.cssText = 'display:flex;align-items:center;gap:14px;flex:1;min-width:240px;';
+
+        if (isHuman) {
+            // Clickable avatar circle
+            const avatarWrap = document.createElement('div');
+            avatarWrap.style.cssText = 'width:64px;height:64px;border-radius:50%;border:1px solid rgba(212,175,55,0.3);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;flex-shrink:0;position:relative;background:rgba(212,175,55,0.03);';
+            avatarWrap.title = 'Click to upload photo';
+
+            const avatarImg = document.createElement('img');
+            avatarImg.id = `ai-avatar-img-${i}`;
+            avatarImg.style.cssText = `width:64px;height:64px;border-radius:50%;object-fit:cover;display:${aiSetup.playerAvatars[i] ? 'block' : 'none'};pointer-events:none;`;
+            if (aiSetup.playerAvatars[i]) avatarImg.src = aiSetup.playerAvatars[i];
+
+            const avatarPh = document.createElement('div');
+            avatarPh.id = `ai-avatar-ph-${i}`;
+            avatarPh.style.cssText = `display:${aiSetup.playerAvatars[i] ? 'none' : 'flex'};flex-direction:column;align-items:center;gap:4px;pointer-events:none;`;
+            avatarPh.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(212,175,55,0.3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <div style="font-size:8px;letter-spacing:2px;color:#444;font-family:'Barlow Semi Condensed',sans-serif;">PHOTO</div>`;
+
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file'; fileInput.accept = 'image/*';
+            fileInput.id = `ai-avatar-file-${i}`;
+            fileInput.style.display = 'none';
+            fileInput.onchange = function() { aiHandleAvatarUpload(i, this); };
+            avatarWrap.onclick = () => fileInput.click();
+
+            avatarWrap.appendChild(avatarImg);
+            avatarWrap.appendChild(avatarPh);
+            profile.appendChild(avatarWrap);
+            profile.appendChild(fileInput);
+
+            // Name input
+            const nameInput = document.createElement('input');
+            nameInput.type = 'text'; nameInput.id = `ai-name-input-${i}`;
+            nameInput.className = 'lobby-input';
+            nameInput.maxLength = 20;
+            nameInput.placeholder = i === 0 ? 'Your name...' : `Player ${AI_ROMAN[i]} name...`;
+            nameInput.value = aiSetup.playerNames[i] || '';
+            nameInput.style.cssText = 'margin-bottom:0;flex:1;font-size:16px;';
+            nameInput.oninput = () => { aiSetup.playerNames[i] = nameInput.value; };
+            profile.appendChild(nameInput);
+
+        } else {
+            // AI profile display
+            const aiAvatar = document.createElement('img');
+            aiAvatar.src = aiAvatarUrl;
+            aiAvatar.style.cssText = 'width:56px;height:56px;border-radius:50%;border:1px solid rgba(212,175,55,0.2);flex-shrink:0;object-fit:cover;background:#0a0a0a;';
+            profile.appendChild(aiAvatar);
+
+            const aiInfo = document.createElement('div');
+            aiInfo.innerHTML = `<div style="font-size:15px;font-weight:600;letter-spacing:1px;color:#888;font-family:'Barlow Semi Condensed',sans-serif;">${aiName}</div>
+                <div style="font-size:10px;letter-spacing:3px;color:#444;font-family:'Montserrat',sans-serif;margin-top:3px;">AUTO-CONTROLLED</div>`;
+            profile.appendChild(aiInfo);
+        }
+        row.appendChild(profile);
+
+        // Right: HUMAN badge or toggle
+        if (i === 0) {
+            const badge = document.createElement('span');
+            badge.style.cssText = 'font-size:13px;letter-spacing:3px;color:var(--gold);font-family:"Barlow Semi Condensed",sans-serif;font-weight:700;flex-shrink:0;';
+            badge.textContent = 'HUMAN';
+            row.appendChild(badge);
+        } else {
+            const toggle = document.createElement('button');
+            toggle.style.cssText = `padding:10px 20px;font-size:12px;font-weight:700;letter-spacing:2px;cursor:pointer;font-family:'Montserrat',sans-serif;border:1px solid;transition:all 0.15s;flex-shrink:0;`
+                + (isHuman
+                    ? 'background:#111;color:#666;border-color:#333;'
+                    : 'background:rgba(212,175,55,0.12);color:var(--gold);border-color:rgba(212,175,55,0.5);');
+            toggle.textContent = isHuman ? 'HUMAN' : 'COMPUTER';
+            toggle.onclick = () => {
+                aiSetup.slots[i] = isHuman ? 'ai' : 'human';
+                renderAISetup();
+            };
+            row.appendChild(toggle);
+        }
+
+        slotList.appendChild(row);
+    }
+}
+
+function aiHandleAvatarUpload(slotIdx, fileInput) {
+    if (!fileInput.files || !fileInput.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.getElementById('lobby-avatar-canvas');
+            canvas.width = 128; canvas.height = 128;
+            const ctx  = canvas.getContext('2d');
+            const side = Math.min(img.width, img.height);
+            ctx.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, 128, 128);
+            aiSetup.playerAvatars[slotIdx] = canvas.toDataURL('image/jpeg', 0.85);
+            // Update DOM without full re-render
+            const imgEl = document.getElementById(`ai-avatar-img-${slotIdx}`);
+            const phEl  = document.getElementById(`ai-avatar-ph-${slotIdx}`);
+            if (imgEl) { imgEl.src = aiSetup.playerAvatars[slotIdx]; imgEl.style.display = 'block'; }
+            if (phEl)  phEl.style.display = 'none';
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(fileInput.files[0]);
+}
+
+function launchAIGame() {
+    const n = aiSetup.numPlayers;
+
+    // Flush any unsaved name-input values
+    for (let i = 0; i < n; i++) {
+        const el = document.getElementById(`ai-name-input-${i}`);
+        if (el) aiSetup.playerNames[i] = el.value.trim();
+    }
+
+    // Populate game.js name/avatar maps
+    spNameMap   = {};
+    spAvatarMap = {};
+    let aiCharIdx = 0;
+    for (let i = 0; i < n; i++) {
+        const isAI = aiSetup.slots[i] === 'ai' && i !== 0;
+        const char = isAI ? (AI_CHARACTERS[aiCharIdx++] || AI_CHARACTERS[AI_CHARACTERS.length - 1]) : null;
+        const name = isAI
+            ? char.name
+            : (aiSetup.playerNames[i] || `Marshal ${AI_ROMAN[i]}`);
+        spNameMap[i] = name;
+        if (isAI) {
+            spAvatarMap[i] = char.avatar;
+        } else if (aiSetup.playerAvatars[i]) {
+            spAvatarMap[i] = aiSetup.playerAvatars[i];
+        }
+    }
+
+    // Set AI indices
+    aiPlayers.length = 0;
+    for (let i = 0; i < n; i++) {
+        if (aiSetup.slots[i] === 'ai' && i !== 0) aiPlayers.push(i);
+    }
+
     document.getElementById('lobby-screen').style.display = 'none';
     initGame();
+
+    // Mark unused slots as bankrupt
+    for (let i = n; i < 4; i++) {
+        players[i].bankrupt = true;
+        players[i].cash     = 0;
+    }
+    updateUI();
 }
 
 function launchGame() {

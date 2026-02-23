@@ -9,6 +9,11 @@
 let currentPlayer = 0;
 let isProcessing  = false;
 let doubleCount   = 0;
+let aiPlayers     = []; // indices (0-3) of computer-controlled players
+let spNameMap     = {}; // single-player custom names   { 0:'Alice', 1:'Bob', ... }
+let spAvatarMap   = {}; // single-player custom avatars { 0: dataURL, ... }
+
+function isAITurn() { return aiPlayers.includes(currentPlayer); }
 
 const players = [
     { id: 1, pos: 0, cash: 1500, hex: '#ff0000', color: 'p1', bankrupt: false, inJail: false, jailTurns: 0, banLiftPass: false },
@@ -219,6 +224,132 @@ function endGameByTimer() {
         `<div style="color:var(--gold);font-size:18px;font-weight:900;letter-spacing:3px;margin-top:10px;">VICTOR: MARSHAL ${romanNum[winner.id-1]}</div>`;
     _showModal(modal);
     players.forEach((_, i) => addLog(i, `GAME OVER — VICTOR BY WEALTH: MARSHAL ${romanNum[winner.id-1]} ($${calcNetWorth(winner)})`));
+    _appendDiscordShareBtn(document.getElementById('modal-actions'));
+}
+
+function endGameByElimination(winner) {
+    clearInterval(gameTimerInterval); gameTimerInterval = null;
+    clearTurnTimer();
+    const modal = document.getElementById('decision-modal');
+    document.getElementById('modal-title').innerText = 'ALL RIVALS EXILED — CONQUEST COMPLETE';
+    document.getElementById('modal-text').innerHTML  =
+        `<div style="color:#aaa;font-size:13px;margin-bottom:8px;">The last Marshal standing claims dominion over all territories.</div>
+         <div style="color:${winner.hex};font-size:15px;margin-top:6px;">Marshal ${romanNum[winner.id-1]} — Net Worth: <b>$${calcNetWorth(winner)}</b></div>`;
+    document.getElementById('modal-actions').innerHTML =
+        `<div style="color:var(--gold);font-size:18px;font-weight:900;letter-spacing:3px;margin-top:10px;">VICTOR: MARSHAL ${romanNum[winner.id-1]}</div>`;
+    _showModal(modal);
+    players.forEach((_, i) => addLog(i, `CONQUEST COMPLETE — MARSHAL ${romanNum[winner.id-1]} VICTORIOUS BY ELIMINATION`));
+    _appendDiscordShareBtn(document.getElementById('modal-actions'));
+}
+
+// =====================================================================
+//  DISCORD VICTORY SHARE
+// =====================================================================
+function _appendDiscordShareBtn(actionsEl) {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'margin-top:20px;border-top:1px solid #1a1a1a;padding-top:16px;text-align:center;';
+
+    const shareBtn = document.createElement('button');
+    shareBtn.id = 'discord-share-btn';
+    shareBtn.className = 'modal-btn';
+    shareBtn.style.cssText = 'background:#5865F2;color:#fff;border-color:#5865F2;font-size:12px;letter-spacing:2px;padding:10px 24px;width:100%;margin-bottom:0;';
+    shareBtn.textContent = '⇧  SHARE VICTORY TO DISCORD';
+    shareBtn.onclick = discordShareInit;
+
+    const webhookForm = document.createElement('div');
+    webhookForm.id = 'discord-webhook-form';
+    webhookForm.style.cssText = 'display:none;margin-top:10px;';
+
+    const webhookInput = document.createElement('input');
+    webhookInput.id = 'discord-webhook-input';
+    webhookInput.type = 'text';
+    webhookInput.placeholder = 'Paste Discord Webhook URL here...';
+    webhookInput.style.cssText = 'width:100%;box-sizing:border-box;padding:9px 12px;background:#0d0d14;border:1px solid #5865F2;color:#ccc;font-family:\'Inter\',sans-serif;font-size:12px;margin-bottom:7px;outline:none;';
+
+    const sendBtn = document.createElement('button');
+    sendBtn.id = 'discord-send-btn';
+    sendBtn.className = 'modal-btn';
+    sendBtn.style.cssText = 'background:#5865F2;color:#fff;border-color:#5865F2;font-size:11px;letter-spacing:2px;padding:9px 18px;width:100%;margin-bottom:0;';
+    sendBtn.textContent = 'SEND SCREENSHOT';
+    sendBtn.onclick = discordShareSend;
+
+    const hintText = document.createElement('div');
+    hintText.style.cssText = 'font-size:10px;color:#444;letter-spacing:1px;font-family:\'Montserrat\',sans-serif;margin-top:6px;';
+    hintText.innerHTML = 'Discord → Channel Settings → Integrations → Webhooks';
+
+    webhookForm.appendChild(webhookInput);
+    webhookForm.appendChild(sendBtn);
+    webhookForm.appendChild(hintText);
+
+    const statusDiv = document.createElement('div');
+    statusDiv.id = 'discord-share-status';
+    statusDiv.style.cssText = 'font-size:11px;margin-top:8px;letter-spacing:1px;font-family:\'Montserrat\',sans-serif;min-height:16px;';
+
+    wrap.appendChild(shareBtn);
+    wrap.appendChild(webhookForm);
+    wrap.appendChild(statusDiv);
+    actionsEl.appendChild(wrap);
+
+    const saved = localStorage.getItem('lp_discord_webhook');
+    if (saved) webhookInput.value = saved;
+}
+
+function discordShareInit() {
+    const form = document.getElementById('discord-webhook-form');
+    if (!form) return;
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+function discordShareSend() {
+    const input   = document.getElementById('discord-webhook-input');
+    const status  = document.getElementById('discord-share-status');
+    const sendBtn = document.getElementById('discord-send-btn');
+
+    if (!input || !input.value.trim()) {
+        if (status) { status.style.color = '#e05555'; status.textContent = 'Enter a webhook URL first.'; }
+        return;
+    }
+    const webhookUrl = input.value.trim();
+    localStorage.setItem('lp_discord_webhook', webhookUrl);
+
+    if (status)  { status.style.color = '#888'; status.textContent = 'Capturing screenshot...'; }
+    if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'CAPTURING...'; }
+
+    html2canvas(document.body, {
+        backgroundColor: '#000000',
+        scale: window.devicePixelRatio || 1,
+        useCORS: true,
+        allowTaint: true,
+        ignoreElements: el => el.id === 'lobby-screen',
+    }).then(canvas => {
+        if (status) status.textContent = 'Sending to Discord...';
+        canvas.toBlob(blob => {
+            const winnerName = (document.getElementById('modal-title').innerText || 'Lumenpoly Victory');
+            const form = new FormData();
+            form.append('file', blob, 'lumenpoly-victory.png');
+            form.append('payload_json', JSON.stringify({
+                content: `⚔️ **${winnerName}**\n*Lumenpoly — ${new Date().toLocaleDateString()}*`,
+                username: 'Lumenpoly',
+            }));
+            fetch(webhookUrl, { method: 'POST', body: form })
+                .then(r => {
+                    if (r.ok || r.status === 204) {
+                        if (status)  { status.style.color = '#4caf50'; status.textContent = '✓ Posted to Discord!'; }
+                        if (sendBtn) { sendBtn.textContent = '✓ SENT'; }
+                    } else {
+                        if (status)  { status.style.color = '#e05555'; status.textContent = `Failed (${r.status}) — check the webhook URL.`; }
+                        if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'SEND SCREENSHOT'; }
+                    }
+                })
+                .catch(() => {
+                    if (status)  { status.style.color = '#e05555'; status.textContent = 'Network error — check the URL.'; }
+                    if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'SEND SCREENSHOT'; }
+                });
+        }, 'image/png');
+    }).catch(() => {
+        if (status)  { status.style.color = '#e05555'; status.textContent = 'Screenshot capture failed.'; }
+        if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'SEND SCREENSHOT'; }
+    });
 }
 
 function updateModeBar() {
@@ -289,7 +420,37 @@ let debtCallback = null;
 
 function handleDebt(p, callback) {
     if (p.cash >= 0) { callback(); return; }
+    if (aiPlayers.includes(p.id - 1)) { aiHandleDebt(p, callback); return; }
     showDebtModal(p, callback);
+}
+
+function aiHandleDebt(p, callback) {
+    // AI liquidates towers then territories cheapest-first until solvent
+    while (p.cash < 0) {
+        const allOwned = Object.values(propertyData).filter(pr => pr.owner === p.id);
+        if (allOwned.length === 0) break;
+        const withBuild = allOwned.find(pr => pr.fortress || pr.towers > 0);
+        if (withBuild) {
+            const sale = Math.floor(withBuild.price * 0.25);
+            if (withBuild.fortress) { withBuild.fortress = false; withBuild.towers = 4; }
+            else { withBuild.towers--; }
+            p.cash += sale;
+            updateBuildingDisplay(withBuild.pos, withBuild);
+            addLog(p.id - 1, `[COMPUTER] STRUCTURE SOLD AT ${withBuild.name} — RECEIVED $${sale}`);
+        } else {
+            const pr = allOwned.sort((a, b) => a.price - b.price)[0];
+            const sale = Math.floor(pr.price * 0.5);
+            pr.fortress = false; pr.towers = 0; pr.owner = null;
+            const ind = document.getElementById(`s${pr.pos}`)?.querySelector('.owner-indicator');
+            if (ind) ind.style.borderColor = 'transparent';
+            updateBuildingDisplay(pr.pos, pr);
+            p.cash += sale;
+            addLog(p.id - 1, `[COMPUTER] ${pr.name} CEDED — RECEIVED $${sale}`);
+        }
+    }
+    updateUI();
+    if (p.cash < 0) declareBankruptcy(p);
+    else callback();
 }
 
 function showDebtModal(p, callback) {
@@ -451,6 +612,14 @@ function declareBankruptcy(p) {
     addLog(p.id - 1, `BANNER SURRENDERED — MARSHAL ${romanNum[p.id - 1]} EXILED. ALL TERRITORIES RETURNED TO NEUTRAL.`);
     boardShake();
     updateUI();
+
+    const active = players.filter(q => !q.bankrupt);
+    if (active.length === 1) {
+        debtCallback = null;
+        endGameByElimination(active[0]);
+        return;
+    }
+
     if (debtCallback) { const cb = debtCallback; debtCallback = null; cb(); }
 }
 
@@ -526,7 +695,7 @@ function updateUI() {
     });
     const statusLabel = (typeof mp !== 'undefined' && mp.enabled && mp.nameMap[currentPlayer])
         ? mp.nameMap[currentPlayer].toUpperCase()
-        : `MARSHAL ${romanNum[currentPlayer]}`;
+        : (spNameMap[currentPlayer] || `MARSHAL ${romanNum[currentPlayer]}`);
     document.getElementById('game-status').innerText =
         players[currentPlayer].bankrupt ? 'SKIPPING...' : `${statusLabel}'S TURN`;
     if (players[currentPlayer].bankrupt &&
@@ -717,10 +886,11 @@ function setupPlayerUI() {
     const defaults = ['MARSHAL I', 'MARSHAL II', 'MARSHAL III', 'MARSHAL IV'];
     players.forEach((p, i) => {
         const name = (typeof mp !== 'undefined' && mp.enabled && mp.nameMap && mp.nameMap[i])
-            ? mp.nameMap[i].toUpperCase() : defaults[i];
+            ? mp.nameMap[i].toUpperCase()
+            : (spNameMap[i] || defaults[i]);
         const avatar = (typeof mp !== 'undefined' && mp.enabled && mp.avatarMap && mp.avatarMap[i])
             ? mp.avatarMap[i]
-            : `https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(name)}`;
+            : (spAvatarMap[i] || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(name)}`);
         const nameEl   = document.getElementById(`p${p.id}-name`);
         const avatarEl = document.getElementById(`p${p.id}-avatar`);
         if (nameEl)   nameEl.textContent = name;
@@ -934,6 +1104,26 @@ function showConquestModal(p, prop, isDouble) {
     skip.onclick   = () => { clearTurnTimer(); modal.style.display = 'none'; finalizeTurn(isDouble); };
     acts.append(buy, skip);
     _showModal(modal);
+    startTurnTimer(10, () => { modal.style.display = 'none'; finalizeTurn(isDouble); });
+
+    // ── AI auto-decision ──────────────────────────────────────────────
+    if (isAITurn()) {
+        setTimeout(() => {
+            clearTurnTimer();
+            if (canAfford) {
+                p.cash -= prop.price;
+                prop.owner = p.id;
+                document.getElementById(`s${p.pos}`).querySelector('.owner-indicator').style.borderColor = p.hex;
+                animateOwnerClaim(p.pos);
+                const nowControls = ownsColorGroup(p.id, prop.pos);
+                addLog(currentPlayer, `[COMPUTER] TERRITORY CONQUERED: ${prop.name}${nowControls ? ' — DOMAIN SECURED!' : ''}`);
+            } else {
+                addLog(currentPlayer, `[COMPUTER] WITHDREW FROM ${prop.name} — INSUFFICIENT FUNDS`);
+            }
+            modal.style.display = 'none';
+            finalizeTurn(isDouble);
+        }, 1500);
+    }
 }
 
 function showBuildModal(p, prop, isDouble) {
@@ -1002,6 +1192,26 @@ function showBuildModal(p, prop, isDouble) {
     leave.onclick   = () => { clearTurnTimer(); modal.style.display = 'none'; finalizeTurn(isDouble); };
     acts.append(leave);
     _showModal(modal);
+
+    // ── AI auto-decision ──────────────────────────────────────────────
+    if (isAITurn()) {
+        setTimeout(() => {
+            if (buildLabel && canAfford) {
+                clearTurnTimer();
+                p.cash -= towerCost;
+                if (prop.towers >= 4) {
+                    prop.fortress = true;
+                    addLog(currentPlayer, `[COMPUTER] FORTRESS ERECTED AT ${prop.name}!`);
+                } else {
+                    prop.towers += 1;
+                    addLog(currentPlayer, `[COMPUTER] ${towerDirs[prop.towers - 1]} TOWER RAISED AT ${prop.name}`);
+                }
+                updateBuildingDisplay(p.pos, prop);
+            }
+            modal.style.display = 'none';
+            finalizeTurn(isDouble);
+        }, 1500);
+    }
 }
 
 function showCardModal(deckType, card, p, isDouble) {
@@ -1017,6 +1227,9 @@ function showCardModal(deckType, card, p, isDouble) {
     okBtn.onclick     = () => { clearTurnTimer(); modal.style.display = 'none'; resolveCard(card, p, isDouble); };
     acts.append(okBtn);
     _showModal(modal, 'card');
+    if (isAITurn()) {
+        setTimeout(() => { clearTurnTimer(); modal.style.display = 'none'; resolveCard(card, p, isDouble); }, 1500);
+    }
 }
 
 // =====================================================================
@@ -1026,7 +1239,6 @@ function initiateTrade() {
     if (isProcessing) return;
     if (document.getElementById('decision-modal').style.display === 'block') return;
     if (isInsaneOrBeyond()) return;
-    if (typeof mp !== 'undefined' && mp.enabled) return;
     const p = players[currentPlayer];
     if (p.bankrupt) return;
     const hasTargets = players.some(t =>
@@ -1265,6 +1477,7 @@ function showTradeDecision(initiator, target, desiredPositions, offeredGold, off
 
     _showModal(modal);
     startTurnTimer(10, doReject);
+    if (aiPlayers.includes(target.id - 1)) { clearTurnTimer(); setTimeout(doReject, 1200); }
 }
 
 // =====================================================================
@@ -1304,11 +1517,11 @@ function showDiplomacyModal(p, prop, isDouble) {
         handleDebt(p, () => finalizeTurn(isDouble));
     };
 
-    if (!isInsaneOrBeyond() && (typeof mp === 'undefined' || !mp.enabled)) {
+    if (!isInsaneOrBeyond()) {
         const peaceBtn = document.createElement('button');
         peaceBtn.className   = 'modal-btn';
         peaceBtn.style.cssText = 'background:#003a5c;color:#aaddff;';
-        peaceBtn.textContent = 'RAISE WHITE BANNER';
+        peaceBtn.textContent = 'DECLARE NON HOSTILE';
         peaceBtn.onclick     = () => { clearTurnTimer(); modal.style.display = 'none'; showOwnerDecisionModal(p, prop, isDouble, tribute); };
         acts.appendChild(peaceBtn);
     }
@@ -1320,8 +1533,8 @@ function showDiplomacyModal(p, prop, isDouble) {
     warBtn.onclick     = payTribute;
     acts.appendChild(warBtn);
     _showModal(modal);
-
     startTurnTimer(5, payTribute);
+    if (isAITurn()) { clearTurnTimer(); setTimeout(payTribute, 1200); }
 }
 
 function showOwnerDecisionModal(p, prop, isDouble, tribute) {
@@ -1330,7 +1543,7 @@ function showOwnerDecisionModal(p, prop, isDouble, tribute) {
     document.getElementById('modal-title').innerText = `MARSHAL ${romanNum[prop.owner - 1]} \u2014 YOUR DECREE`;
     document.getElementById('modal-text').innerHTML  =
         `<span style="color:${p.hex}">Marshal ${romanNum[p.id - 1]}</span> approaches
-         <b style="color:var(--gold)">${prop.name}</b> bearing a white banner.<br><br>
+         <b style="color:var(--gold)">${prop.name}</b> declaring non-hostile intentions.<br><br>
          <span style="color:#aaa;font-size:12px;">Do you honor the truce, or demand war reparations?</span><br>
          <span style="color:#666;font-size:11px;">Tribute if charged: $${tribute} gold — auto-charge in 5s</span>`;
 
@@ -1365,8 +1578,8 @@ function showOwnerDecisionModal(p, prop, isDouble, tribute) {
     demandBtn.onclick     = doCharge;
     acts.appendChild(demandBtn);
     _showModal(modal);
-
     startTurnTimer(5, doCharge);
+    if (aiPlayers.includes(prop.owner - 1)) { clearTurnTimer(); setTimeout(doCharge, 1200); }
 }
 
 // =====================================================================
@@ -1569,7 +1782,8 @@ function finalizeTurn(isDouble) {
         }
     } else {
         if (!players[currentPlayer].bankrupt) {
-            startTurnTimer(10, () => { if (!isProcessing) runPhysics(); });
+            const delay = aiPlayers.includes(currentPlayer) ? 2 : 10;
+            startTurnTimer(delay, () => { if (!isProcessing) runPhysics(); });
         }
     }
 }

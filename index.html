@@ -6,6 +6,7 @@
     <title>Lumenpoly · Kinetic Elite Full Scale</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
@@ -16,10 +17,7 @@
 
     <!-- ══ HEADER ══════════════════════════════════════════════════════ -->
     <div id="lobby-header">
-        <div>
-            <div class="lh-logo">LUMENPOLY</div>
-            <div class="lh-tagline">Kinetic Elite &middot; War Council</div>
-        </div>
+        <div class="lh-logo">LUMENPOLY</div>
         <div class="lh-meta">
             2 – 4 Players<br>
             30 Minute Campaign
@@ -32,18 +30,19 @@
     <!-- ── STEP 0 : Cover / Profile Setup ──────────────────────────── -->
     <div id="lobby-step0">
 
-        <!-- Hero title -->
-        <div class="lobby-hero">
+        <!-- Full-width header: logo + tagline spanning all 3 columns -->
+        <div class="lobby-cover-header">
+            <img src="logo.png" alt="LUMENPOLY" class="lobby-hero-logo">
             <div class="lobby-hero-title">LUMENPOLY</div>
             <div class="lobby-hero-sub">Kinetic Elite &middot; War Council</div>
         </div>
 
-        <!-- Profile card -->
+        <!-- Left: sign-in card -->
         <div class="lobby-card" style="text-align:center;">
 
             <!-- Large circular avatar upload -->
             <div class="lobby-cover-avatar" onclick="document.getElementById('lobby-avatar-file').click()" title="Click to upload photo">
-                <img id="lobby-avatar-img" alt="" style="width:120px;height:120px;border-radius:50%;object-fit:cover;display:none;pointer-events:none;">
+                <img id="lobby-avatar-img" alt="" style="width:200px;height:200px;border-radius:50%;object-fit:cover;display:none;pointer-events:none;">
                 <div id="lobby-avatar-placeholder" class="lobby-avatar-ph">
                     <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="rgba(212,175,55,0.3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
@@ -68,7 +67,12 @@
 
         </div><!-- /lobby-card -->
 
-        <!-- Rules accordion -->
+        <!-- Center: BG image -->
+        <div class="lobby-cover-center">
+            <img src="BG%20Image.png" alt="" class="lobby-cover-bg-img">
+        </div>
+
+        <!-- Right: rules accordion -->
         <div class="lobby-rules-section">
             <div class="lobby-rules-heading">Field Manual</div>
 
@@ -107,7 +111,7 @@
             </details>
             <details class="rules-item">
                 <summary>Diplomacy</summary>
-                <div class="rules-item-body">In single-device mode you may <b>Raise the White Banner</b> instead of paying tribute. The defending Marshal decides to honor or demand reparations (auto-demand in 5 s). Unavailable in online multiplayer or Insane Mode+.</div>
+                <div class="rules-item-body">You may <b>Declare Non Hostile</b> instead of paying tribute when landing on a rival's territory. The defending Marshal decides to honor the truce or demand war reparations (auto-demand in 5 s). Disabled in Insane Mode+.</div>
             </details>
             <details class="rules-item">
                 <summary>Ban List Rule</summary>
@@ -115,7 +119,7 @@
             </details>
             <details class="rules-item">
                 <summary>Trade</summary>
-                <div class="rules-item-body">Before rolling, propose a territory trade with any active Marshal — offer gold, territories, or both. The rival has 10 seconds to accept (auto-reject on timeout). Disabled in online multiplayer and Insane Mode+.</div>
+                <div class="rules-item-body">Before rolling, propose a territory trade with any active Marshal — offer gold, territories, or both. The rival has 10 seconds to accept (auto-reject on timeout). Disabled in Insane Mode+.</div>
             </details>
             <details class="rules-item">
                 <summary>Debt &amp; Bankruptcy</summary>
@@ -126,7 +130,7 @@
                 <div class="rules-item-body">
                     <b style="color:#f88;">HARD 5 min</b> — taxes &amp; bribe doubled.<br>
                     <b style="color:#f55;">ELITE 10 min</b> — only punishing decrees drawn.<br>
-                    <b style="color:#f00;">INSANE 15 min</b> — no GO bonus, no trade, no mercy.<br>
+                    <b style="color:#f00;">INSANE 15 min</b> — no GO bonus, no trade, no diplomacy.<br>
                     <b style="color:#c00;">NIGHTMARE 20 min</b> — decree penalties doubled.<br>
                     <b style="color:#900;">HELL 25 min</b> — war reparations doubled.<br>
                     At 30 minutes: highest net worth wins.
@@ -136,8 +140,29 @@
 
     </div><!-- /lobby-step0 -->
 
+    <!-- ── STEP AI : Single-device battle setup ────────────────────── -->
+    <div id="lobby-step-ai" style="display:none;width:100%;max-width:680px;">
+
+        <div class="lobby-cover-header" style="margin-bottom:36px;">
+            <div class="lobby-hero-title" style="font-size:44px;">BATTLE SETUP</div>
+            <div class="lobby-hero-sub">Single Device War Council</div>
+        </div>
+
+        <div class="lobby-card">
+            <label class="lobby-label">Marshals on the Field</label>
+            <div id="ai-count-row" style="display:flex;gap:10px;margin-bottom:36px;"></div>
+
+            <label class="lobby-label" style="margin-bottom:18px;">Marshal Configuration</label>
+            <div id="ai-slot-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:36px;"></div>
+
+            <button class="lobby-btn" onclick="launchAIGame()">LAUNCH BATTLE</button>
+            <button class="lobby-btn-ghost" onclick="cancelAISetup()">&#8592; Back</button>
+        </div>
+
+    </div><!-- /lobby-step-ai -->
+
     <!-- ── STEP 1 : Lobby Browser ──────────────────────────────────── -->
-    <div id="lobby-step1" style="display:none;width:100%;max-width:860px;">
+    <div id="lobby-step1" style="display:none;width:100%;">
 
         <!-- Profile bar -->
         <div class="lobby-profile-bar">
@@ -148,7 +173,7 @@
             </div>
         </div>
 
-        <!-- Two-column: Host · Join -->
+        <!-- Three-column: Host · Image · Join -->
         <div class="lobby-browser-grid">
 
             <!-- HOST -->
@@ -157,6 +182,11 @@
                 <div class="lobby-bc-title">Host a Campaign</div>
                 <div class="lobby-bc-desc">Open a private war council and invite allies with a unique campaign code. You decide when the battle begins.</div>
                 <button class="lobby-btn lobby-bc-btn" onclick="lobbyClickHost()">Create Room</button>
+            </div>
+
+            <!-- CENTER: BG image -->
+            <div class="lobby-browser-center">
+                <img src="BG%20Image.png" alt="" class="lobby-cover-bg-img">
             </div>
 
             <!-- JOIN -->
@@ -183,31 +213,39 @@
 
         <!-- Top bar: code + action buttons -->
         <div class="lobby-step2-topbar">
-            <div id="lobby-code-section">
-                <div class="lobby-label" style="text-align:left;">Campaign Code</div>
-                <div id="lobby-code-display" style="color:var(--gold);font-size:26px;font-weight:900;letter-spacing:8px;"></div>
+            <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap;">
+                <button class="lobby-back-btn" onclick="lobbyCancelHosting()">&#8592; Cancel</button>
+                <div id="lobby-code-section">
+                    <div class="lobby-label" style="text-align:left;margin-bottom:4px;">Campaign Code</div>
+                    <div id="lobby-code-display" style="color:var(--gold);font-size:26px;font-weight:900;letter-spacing:8px;"></div>
+                </div>
             </div>
             <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-                <button class="lobby-btn" style="font-size:9px;padding:10px 18px;" onclick="lobbyCopyLink()">COPY INVITE</button>
+                <button class="lobby-btn" style="font-size:14px;padding:14px 24px;width:auto;margin:0;" onclick="lobbyCopyLink()">COPY INVITE</button>
                 <button class="lobby-btn" id="lobby-start-btn" onclick="lobbyStartGame()"
-                    style="display:none;padding:14px 28px;font-size:11px;letter-spacing:5px;">BEGIN CAMPAIGN</button>
+                    style="display:none;padding:14px 28px;font-size:14px;letter-spacing:4px;width:auto;margin:0;">BEGIN CAMPAIGN</button>
                 <div id="lobby-waiting-msg" style="color:#555;font-size:10px;letter-spacing:4px;display:none;font-family:'Montserrat',sans-serif;">AWAITING HOST COMMAND...</div>
             </div>
         </div>
 
-        <!-- Two columns: visitor list + chat -->
+        <!-- Three columns: visitor list · image · chat -->
         <div class="lobby-step2-grid">
 
             <!-- LEFT: visitor list -->
             <div class="lobby-panel">
                 <div class="lobby-panel-label">Marshals Assembled</div>
-                <div style="color:#444;font-size:10px;letter-spacing:3px;margin-bottom:16px;font-family:'Montserrat',sans-serif;">MIN. 2 REQUIRED TO BEGIN</div>
+                <div style="color:#444;font-size:13px;letter-spacing:2px;margin-bottom:16px;font-family:'Montserrat',sans-serif;">MIN. 2 REQUIRED TO BEGIN</div>
                 <div id="lobby-player-list"></div>
-                <div id="lobby-error2" style="color:#e04040;font-size:11px;margin-top:auto;padding-top:12px;min-height:16px;"></div>
+                <div id="lobby-error2" style="color:#e04040;font-size:15px;margin-top:auto;padding-top:12px;min-height:16px;"></div>
+            </div>
+
+            <!-- CENTER: BG image -->
+            <div class="lobby-step2-center">
+                <img src="BG%20Image.png" alt="" class="lobby-cover-bg-img">
             </div>
 
             <!-- RIGHT: chat -->
-            <div class="lobby-panel" style="min-height:420px;">
+            <div class="lobby-panel">
                 <div class="lobby-panel-label">War Council Comms</div>
                 <div id="lobby-chat-msgs">
                     <div class="lobby-chat-empty">Messages will appear here once allies connect...</div>
@@ -219,7 +257,7 @@
                         maxlength="120"
                         onkeydown="if(event.key==='Enter') lobbyChatSend()">
                     <button class="lobby-btn" onclick="lobbyChatSend()"
-                        style="padding:12px 18px;white-space:nowrap;margin:0;">SEND</button>
+                        style="padding:12px 18px;white-space:nowrap;margin:0;width:auto;">SEND</button>
                 </div>
             </div>
 
@@ -278,6 +316,7 @@
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <!--  PLAYER INFO BOXES                                                  -->
 <!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="info-grid">
 <div class="p-info-box" id="box-1">
     <div class="p-header">
         <div class="p-player-identity">
@@ -322,6 +361,7 @@
     <div class="p-assets-container" id="p4-assets">NO TERRITORIES</div>
     <div class="p-logs" id="p4-logs">&gt; GUILD ALLIANCE FORGED</div>
 </div>
+</div><!-- /info-grid -->
 
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <!--  DECISION MODAL                                                     -->
