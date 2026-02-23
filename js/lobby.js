@@ -24,6 +24,7 @@ let mp = {
     nameMap:           {},      // slot index → player name
     avatarMap:         {},      // slot index → avatar image URL (optional)
     lastStateChecksum: 0,       // anti-cheat: checksum of last confirmed state
+    waitingForAck:     false,   // guest: true while TURN_DONE is in-flight to host
 };
 
 // ─── SLOT COLORS ─────────────────────────────────────────────────────
@@ -444,6 +445,7 @@ function handleGuestData(data) {
 
     } else if (data.type === 'STATE') {
         mp.lastStateChecksum = data.checksum || 0;
+        mp.waitingForAck     = false;
         applyState(data.state);
         showTurnLockOverlay();
 
@@ -785,6 +787,9 @@ function launchGame() {
         players[i].cash     = 0;
     }
     updateUI();
+    // Broadcast the initial state so guests have a valid checksum before
+    // their first turn, regardless of who goes first after the shuffle.
+    if (mp.isHost) broadcastState();
     showTurnLockOverlay();
 }
 

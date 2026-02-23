@@ -906,6 +906,7 @@ function setupPlayerUI() {
 function runPhysics() {
     if (isProcessing) return;
     if (typeof mp !== 'undefined' && mp.enabled && currentPlayer !== mp.myIndex) return;
+    if (typeof mp !== 'undefined' && mp.enabled && !mp.isHost && mp.waitingForAck) return;
     clearTurnTimer();
     const p   = players[currentPlayer];
     const btn = document.getElementById('roll-trigger');
@@ -1775,6 +1776,7 @@ function finalizeTurn(isDouble) {
                 state:        serializeState(),
                 prevChecksum: typeof mp.lastStateChecksum !== 'undefined' ? mp.lastStateChecksum : 0,
             });
+            mp.waitingForAck = true;
         }
         showTurnLockOverlay();
         if (!players[currentPlayer].bankrupt && currentPlayer === mp.myIndex) {

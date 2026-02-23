@@ -831,15 +831,33 @@ details.rules-item > summary:hover { color: #bbb; }
    fixed positions exactly as if the wrapper weren't there */
 .info-grid { display: contents; }
 
-/* Desktop 1200-1919px: base sizes (120px corners, 86px spaces) are fine */
+/* Wide desktop ≥ 1900px: full board (1058px) + boxes (400px+20px each) = 1898px — fits */
 
-/* Tablet landscape / small desktop: 900–1199px */
-@media (max-width: 1199px) {
-    .board-frame { zoom: 0.82; }
-    .p-info-box  { width: 300px; height: 400px; padding: 14px; gap: 8px; }
+/* Standard desktop 1600–1899px */
+@media (max-width: 1899px) {
+    .board-frame { zoom: 0.88; }
+    .p-info-box  { width: 340px; height: 450px; padding: 18px; gap: 10px; }
+    .p-cash      { font-size: 32px; }
+    .p-name      { font-size: 16px; }
+    .p-logs      { height: 100px; font-size: 12px; }
+}
+
+/* Laptop 1400–1599px */
+@media (max-width: 1599px) {
+    .board-frame { zoom: 0.78; }
+    .p-info-box  { width: 300px; height: 420px; padding: 14px; gap: 8px; }
     .p-cash      { font-size: 28px; }
     .p-name      { font-size: 14px; }
     .p-logs      { height: 90px; font-size: 11px; }
+}
+
+/* Tablet landscape / small desktop: 900–1399px */
+@media (max-width: 1399px) {
+    .board-frame { zoom: 0.68; }
+    .p-info-box  { width: 260px; height: 390px; padding: 12px; gap: 8px; }
+    .p-cash      { font-size: 24px; }
+    .p-name      { font-size: 13px; }
+    .p-logs      { height: 80px; font-size: 11px; }
 }
 
 /* Tablet portrait / large phone: 600–899px */
