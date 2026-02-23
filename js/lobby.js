@@ -396,6 +396,12 @@ function handleHostData(data, entry) {
         broadcastLobbyChat(data, entry);
         appendChatMsg(data);
 
+    } else if (data.type === 'LIVE_ROLL') {
+        // Relay to all other guests so they can watch the animation
+        mp.guestConns.forEach(g => { if (g.conn.open && g !== entry) g.conn.send(data); });
+        // Host also watches the animation locally
+        replayRoll(data.d1, data.d2, data.steps, data.playerIdx);
+
     } else if (data.type === 'TURN_DONE') {
         // Anti-cheat: validate before applying
         const prevState = serializeState();
@@ -448,6 +454,9 @@ function handleGuestData(data) {
         mp.waitingForAck     = false;
         applyState(data.state);
         showTurnLockOverlay();
+
+    } else if (data.type === 'LIVE_ROLL') {
+        replayRoll(data.d1, data.d2, data.steps, data.playerIdx);
 
     } else if (data.type === 'CHAT') {
         appendLobbyChatMsg(data);

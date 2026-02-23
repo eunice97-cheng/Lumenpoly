@@ -722,6 +722,75 @@ function _showModal(modal, type) {
 function boardZoomIn()  { const b = document.querySelector('.board-frame'); if (b) b.classList.add('board-zoomed'); }
 function boardZoomOut() { const b = document.querySelector('.board-frame'); if (b) b.classList.remove('board-zoomed'); }
 
+// ── Live multiplayer: broadcast roll event to all peers ───────────────
+function broadcastLiveRoll(d1, d2, steps) {
+    if (typeof mp === 'undefined' || !mp.enabled) return;
+    const msg = { type: 'LIVE_ROLL', d1, d2, steps, playerIdx: currentPlayer };
+    if (mp.isHost) {
+        mp.guestConns.forEach(g => { if (g.conn.open) g.conn.send(msg); });
+    } else {
+        if (mp.hostConn && mp.hostConn.open) mp.hostConn.send(msg);
+    }
+}
+
+// ── Live multiplayer: replay dice + movement visually (no game logic) ─
+function replayRoll(d1, d2, steps, playerIdx) {
+    const rotMap = [null,{x:0,y:0},{x:0,y:-90},{x:-90,y:0},{x:90,y:0},{x:0,y:90},{x:0,y:180}];
+    [document.getElementById('dice1'), document.getElementById('dice2')].forEach((die, i) => {
+        const val = i === 0 ? d1 : d2;
+        die.style.transition = 'none';
+        die.style.transform  = 'translate3d(0,0,150px)';
+        setTimeout(() => {
+            die.style.transition = 'transform 1s cubic-bezier(0.15, 0.9, 0.3, 1.3)';
+            die.style.transform  = `translate3d(${i === 0 ? -60 : 60}px, 0, 0) rotateX(${1440 + rotMap[val].x}deg) rotateY(${1440 + rotMap[val].y}deg)`;
+        }, 50);
+    });
+    if (d1 === d2) document.getElementById('dome').classList.add('double-resonance');
+    else           document.getElementById('dome').classList.remove('double-resonance');
+    if (steps > 0) setTimeout(() => movePlayerVisual(steps, playerIdx), 1100);
+}
+
+// ── Live multiplayer: animate token movement without running game logic ─
+function movePlayerVisual(steps, playerIdx) {
+    const p = players[playerIdx];
+    if (!p || p.bankrupt) return;
+    const tokenEl = document.getElementById(`token-${p.id}`);
+    let stepCount = 0;
+    boardZoomIn();
+    if (tokenEl) { tokenEl.classList.remove('is-active'); tokenEl.classList.add('is-moving'); }
+    const interval = setInterval(() => {
+        p.pos = (p.pos + 1) % 40;
+        trailGlow(`s${p.pos}`);
+        const tray = document.getElementById(`s${p.pos}`).querySelector('.token-tray')
+                  || document.getElementById(`s${p.pos}`);
+        moveTokenFLIP(tokenEl, tray);
+        if (++stepCount >= steps) {
+            clearInterval(interval);
+            setTimeout(() => {
+                boardZoomOut();
+                landingEffects(`s${p.pos}`, tokenEl);
+                setTimeout(() => {
+                    if (tokenEl) tokenEl.classList.remove('is-moving');
+                    updateActiveTokenPulse();
+                }, 220);
+            }, 200);
+        }
+    }, 160);
+}
+
+// ── Live multiplayer: snap token DOM elements to authoritative positions ─
+function snapTokensToPositions() {
+    players.forEach(p => {
+        if (p.bankrupt) return;
+        const tokenEl = document.getElementById(`token-${p.id}`);
+        if (!tokenEl) return;
+        const spaceEl = document.getElementById(`s${p.pos}`);
+        if (!spaceEl) return;
+        const tray = spaceEl.querySelector('.token-tray') || spaceEl;
+        if (!tray.contains(tokenEl)) tray.appendChild(tokenEl);
+    });
+}
+
 // ── Board shake on bankruptcy ─────────────────────────────────────────
 function boardShake() {
     const b = document.querySelector('.board-frame');
@@ -915,6 +984,13 @@ function runPhysics() {
     const roll1    = Math.floor(Math.random() * 6) + 1;
     const roll2    = Math.floor(Math.random() * 6) + 1;
     const isDouble = (roll1 === roll2);
+
+    // Broadcast live roll to all other players for real-time animation
+    if (typeof mp !== 'undefined' && mp.enabled) {
+        let liveSteps = roll1 + roll2;
+        if (p.inJail && !isDouble && (p.jailTurns + 1) < 3) liveSteps = 0;
+        broadcastLiveRoll(roll1, roll2, liveSteps);
+    }
 
     if (isDouble) {
         document.getElementById('dome').classList.add('double-resonance');
